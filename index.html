@@ -314,8 +314,9 @@
             gap: 15px;
             padding-bottom: 10px;
             /* 移除內建捲軸 */
-            scrollbar-width: none; 
-            -ms-overflow-style: none; /* For IE and Edge */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            /* For IE and Edge */
         }
 
         .scroll-container::-webkit-scrollbar {
@@ -349,7 +350,7 @@
             font-size: 2.2rem;
             margin: 5px 0 0;
         }
-        
+
         /* 🌟 新增天氣描述的樣式 */
         .mini-weather-desc {
             font-size: 0.9rem;
@@ -365,7 +366,7 @@
             line-height: 1;
         }
 
-        /* 🌟 新增海流濕度（降雨機率）的樣式 */
+        /* 🌟 新增降雨機率的樣式 */
         .mini-rain {
             font-size: 0.8rem;
             color: #aaa;
@@ -473,7 +474,7 @@
 
         <div id="heroCard"></div>
 
-        <h3 class="section-title">未來海流預報</h3>
+        <h3 class="section-title">聲納氣象預報</h3>
         <div class="scroll-container" id="futureForecasts"></div>
 
     </div>
@@ -482,29 +483,30 @@
         // 注意：這裡請維持您的 Server 網址
         const API_BASE_URL = "https://rm93-weather.zeabur.app/api/weather/";
 
+        // 🌟 修正地點名稱，回歸標準城市名稱
         const cities = {
-            taipei: "臺北市海域",
-            newtaipei: "新北市海域",
-            keelung: "基隆市海域",
-            taoyuan: "桃園市海域",
-            hsinchu_city: "新竹市海域",
-            hsinchu_county: "新竹縣海域",
-            miaoli: "苗栗縣海域",
-            taichung: "臺中市海域",
-            changhua: "彰化縣海域",
-            nantou: "南投縣深潭",
-            yunlin: "雲林縣海域",
-            chiayi_city: "嘉義市海域",
-            chiayi_county: "嘉義縣海域",
-            tainan: "臺南市海域",
-            kaohsiung: "高雄市海域",
-            pingtung: "屏東縣海域",
-            yilan: "宜蘭縣海域",
-            hualien: "花蓮縣海域",
-            taitung: "臺東縣海域",
-            penghu: "澎湖縣海域",
-            kinmen: "金門縣海域",
-            lienchiang: "連江縣海域"
+            taipei: "臺北市",
+            newtaipei: "新北市",
+            keelung: "基隆市",
+            taoyuan: "桃園市",
+            hsinchu_city: "新竹市",
+            hsinchu_county: "新竹縣",
+            miaoli: "苗栗縣",
+            taichung: "臺中市",
+            changhua: "彰化縣",
+            nantou: "南投縣",
+            yunlin: "雲林縣",
+            chiayi_city: "嘉義市",
+            chiayi_county: "嘉義縣",
+            tainan: "臺南市",
+            kaohsiung: "高雄市",
+            pingtung: "屏東縣",
+            yilan: "宜蘭縣",
+            hualien: "花蓮縣",
+            taitung: "臺東縣",
+            penghu: "澎湖縣",
+            kinmen: "金門縣",
+            lienchiang: "連江縣"
         };
 
         // 產生背景氣泡
@@ -551,33 +553,35 @@
             return "🌤️";
         }
 
+        // 🌟 修正建議文字，從「海洋/潛水衣」改為「大氣/衣著」
         function getAdvice(rainProb, maxTemp) {
-            // 風格化：海洋/鯊魚用語
-            let rainIcon = "🌊";
-            let rainText = "海流平穩";
+            // 修正降雨建議
+            let rainIcon = "💧";
+            let rainText = "地面乾燥";
             const prob = parseInt(rainProb);
 
             if (prob > 60) {
-                rainIcon = "⛈️";
-                rainText = "風暴將至！";
-            } else if (prob > 30) {
                 rainIcon = "☔";
-                rainText = "帶把傘吧";
+                rainText = "帶傘，注意暴雨";
+            } else if (prob > 30) {
+                rainIcon = "☂️";
+                rainText = "可能需要雨具";
             }
 
-            let clothIcon = "🩳";
-            let clothText = "適合游泳";
+            // 修正穿衣建議 (依氣溫)
+            let clothIcon = "👕";
+            let clothText = "輕薄衣物即可";
             const temp = parseInt(maxTemp);
 
             if (temp >= 30) {
-                clothIcon = "🦈";
-                clothText = "背鰭會曬傷";
+                clothIcon = "🥵";
+                clothText = "注意防曬中暑";
             } else if (temp >= 26) {
-                clothIcon = "🩱";
-                clothText = "水溫舒適";
+                clothIcon = "👚";
+                clothText = "短袖長褲舒適";
             } else if (temp <= 20) {
-                clothIcon = "🐡";
-                clothText = "加厚潛水衣";
+                clothIcon = "🧥";
+                clothText = "需加保暖外套";
             }
 
             return {
@@ -588,13 +592,14 @@
             };
         }
 
+        // 🌟 修正時段描述，避免誤認為潮汐
         function getTimePeriod(startTime) {
             const hour = new Date(startTime).getHours();
-            if (hour >= 5 && hour < 11) return "朝潮";
-            if (hour >= 11 && hour < 14) return "日正";
-            if (hour >= 14 && hour < 18) return "夕潮";
-            if (hour >= 18 && hour < 23) return "月升";
-            return "深宵";
+            if (hour >= 5 && hour < 11) return "早晨時段";
+            if (hour >= 11 && hour < 14) return "中午時段";
+            if (hour >= 14 && hour < 18) return "下午時段";
+            if (hour >= 18 && hour < 23) return "晚間時段";
+            return "深夜時段";
         }
 
         function renderWeather(data) {
@@ -606,6 +611,7 @@
             const period = getTimePeriod(current.startTime);
             const avgTemp = Math.round((parseInt(current.maxTemp) + parseInt(current.minTemp)) / 2);
 
+            // 🌟 修正今日焦點卡的描述
             document.getElementById('heroCard').innerHTML = `
                         <div class="hero-card">
                             <div class="hero-period">CURRENT | ${period}</div>
@@ -619,12 +625,12 @@
                                 <div class="advice-item">
                                     <div class="advice-icon">${advice.rainIcon}</div>
                                     <div class="advice-text">${advice.rainText}</div>
-                                    <div class="advice-sub">降雨機率 ${current.rain}</div>
+                                    <div class="advice-sub">降雨機率 ${current.rain}%</div> 
                                 </div>
                                 <div class="advice-item">
                                     <div class="advice-icon">${advice.clothIcon}</div>
                                     <div class="advice-text">${advice.clothText}</div>
-                                    <div class="advice-sub">最高溫 ${current.maxTemp}°</div>
+                                    <div class="advice-sub">最高氣溫 ${current.maxTemp}°</div>
                                 </div>
                             </div>
                         </div>
@@ -638,26 +644,23 @@
                 let p = getTimePeriod(f.startTime);
                 const fDate = new Date(f.startTime);
                 if (fDate.getDate() !== todayDate) {
-                    // 檢查是否為明日，並替換顯示的字串
                     const tomorrow = new Date();
                     tomorrow.setDate(tomorrow.getDate() + 1);
                     if (fDate.getDate() === tomorrow.getDate()) {
                          p = "明日" + p;
                     } else {
-                        // 如果是後天或更久以後，顯示日期
                         p = `${fDate.getMonth() + 1}/${fDate.getDate()} ${p}`;
                     }
                    
                 }
 
-                // 🌟 新增天氣描述與更清晰的濕度標示
                 scrollContainer.innerHTML += `
                             <div class="mini-card">
                                 <div class="mini-time">${p}</div>
                                 <div class="mini-icon">${getWeatherIcon(f.weather)}</div>
                                 <div class="mini-weather-desc">${f.weather}</div>
                                 <div class="mini-temp">${f.minTemp}° - ${f.maxTemp}°</div>
-                                <div class="mini-rain">💧 降雨機率 ${f.rain}</div>
+                                <div class="mini-rain">💧 機率 ${f.rain}%</div>
                             </div>
                         `;
             });
