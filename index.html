@@ -4,11 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>鯊鯊天氣 | Atlantis</title>
+    <title>鯊鯊天氣 | 亞特蘭提斯</title>
     <link rel="icon" type="image/png" href="./icon-v2.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Electrolize&family=Noto+Sans+TC:wght@300;700;900&display=swap"
         rel="stylesheet">
 
     <style>
@@ -33,13 +35,28 @@
         }
 
         body {
-            font-family: 'Zen Maru Gothic', sans-serif;
+            /* 🌟 更換字體：中文優先 Noto Sans TC，英文/數字/主要標題使用 Electrolize */
+            font-family: 'Electrolize', 'Noto Sans TC', sans-serif;
             background: linear-gradient(180deg, var(--sea-medium) 0%, var(--sea-dark) 100%);
             min-height: 100vh;
             color: var(--text-light);
             overflow-x: hidden;
             padding-bottom: 20px;
             position: relative;
+        }
+
+        /* 🌟 網站 H1 標題風格設定 */
+        .site-title {
+            color: var(--neon-cyan);
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-align: center;
+            margin: 20px auto 0;
+            padding: 0 20px;
+            /* 霓虹光暈效果 */
+            text-shadow: 0 0 15px rgba(0, 242, 255, 0.8), 0 0 5px rgba(0, 242, 255, 0.5);
+            letter-spacing: 5px;
+            text-transform: uppercase;
         }
 
         /* 背景氣泡動畫 */
@@ -68,9 +85,11 @@
                 bottom: -20px;
                 transform: translateX(0);
             }
+
             50% {
                 transform: translateX(20px);
             }
+
             100% {
                 bottom: 110vh;
                 transform: translateX(-20px);
@@ -142,7 +161,8 @@
         .container {
             padding: 20px;
             max-width: 600px;
-            margin: 0 auto;
+            /* 標題與內文間距調整 */
+            margin: 10px auto 0; 
         }
 
         /* === 核心：今日焦點卡片 (潛水艙風格) === */
@@ -200,8 +220,14 @@
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
         }
 
         .hero-temp {
@@ -341,7 +367,7 @@
             z-index: 999;
             transition: opacity 0.5s ease;
         }
-        
+
         /* 聲納波紋動畫 */
         .sonar-emitter {
             width: 20px;
@@ -363,14 +389,31 @@
             opacity: 0;
             animation: sonar 2s infinite;
         }
-        
-        .sonar-wave:nth-child(1) { animation-delay: 0s; }
-        .sonar-wave:nth-child(2) { animation-delay: 0.6s; }
-        .sonar-wave:nth-child(3) { animation-delay: 1.2s; }
+
+        .sonar-wave:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .sonar-wave:nth-child(2) {
+            animation-delay: 0.6s;
+        }
+
+        .sonar-wave:nth-child(3) {
+            animation-delay: 1.2s;
+        }
 
         @keyframes sonar {
-            0% { width: 0; height: 0; opacity: 1; }
-            100% { width: 200px; height: 200px; opacity: 0; }
+            0% {
+                width: 0;
+                height: 0;
+                opacity: 1;
+            }
+
+            100% {
+                width: 200px;
+                height: 200px;
+                opacity: 0;
+            }
         }
 
         .hidden {
@@ -389,7 +432,8 @@
             <div class="sonar-wave"></div>
             <div class="sonar-wave"></div>
         </div>
-        <p style="color: var(--neon-cyan); font-weight: bold; margin-top: 120px; letter-spacing: 2px;">SHARK SCANNING...</p>
+        <p style="color: var(--neon-cyan); font-weight: bold; margin-top: 120px; letter-spacing: 2px;">SHARK SCANNING...
+        </p>
         <p style="color: var(--text-light); font-size: 0.8rem; margin-top: 10px;">正在偵測海域氣象...</p>
     </div>
 
@@ -400,6 +444,8 @@
         </div>
         <div id="updateTime" class="update-pill">SYNC...</div>
     </div>
+
+    <h1 class="site-title">SHARK WEATHER</h1>
 
     <div class="container" id="mainContent" style="display: none;">
 
@@ -413,7 +459,7 @@
     <script>
         // 注意：這裡請維持您的 Server 網址
         const API_BASE_URL = "https://rm93-weather.zeabur.app/api/weather/";
-        
+
         const cities = {
             taipei: "臺北市海域",
             newtaipei: "新北市海域",
@@ -443,7 +489,7 @@
         function createBubbles() {
             const container = document.getElementById('bubbleContainer');
             const bubbleCount = 15;
-            for(let i=0; i<bubbleCount; i++){
+            for (let i = 0; i < bubbleCount; i++) {
                 const bubble = document.createElement('div');
                 bubble.className = 'bubble';
                 // 隨機大小
@@ -474,7 +520,6 @@
         }
 
         function getWeatherIcon(weather) {
-            // 這裡可以換成更符合海洋風格的，但為了易讀性保留標準天氣符號
             if (!weather) return "🌤️";
             if (weather.includes("晴")) return "☀️";
             if (weather.includes("多雲")) return "⛅";
@@ -489,7 +534,7 @@
             let rainIcon = "🌊";
             let rainText = "海流平穩";
             const prob = parseInt(rainProb);
-            
+
             if (prob > 60) {
                 rainIcon = "⛈️";
                 rainText = "風暴將至！";
@@ -513,7 +558,12 @@
                 clothText = "加厚潛水衣";
             }
 
-            return { rainIcon, rainText, clothIcon, clothText };
+            return {
+                rainIcon,
+                rainText,
+                clothIcon,
+                clothText
+            };
         }
 
         function getTimePeriod(startTime) {
@@ -589,7 +639,7 @@
         async function fetchWeather(cityKey = 'taipei') {
             const loading = document.getElementById('loading');
             const mainContent = document.getElementById('mainContent');
-            
+
             loading.style.display = 'flex';
             loading.classList.remove('hidden');
             mainContent.style.display = 'none';
@@ -597,7 +647,7 @@
             try {
                 const delayPromise = new Promise(resolve => setTimeout(resolve, 1000));
                 const fetchPromise = fetch(API_BASE_URL + cityKey).then(res => {
-                    if(!res.ok) throw new Error("API fail");
+                    if (!res.ok) throw new Error("API fail");
                     return res.json();
                 });
 
@@ -605,10 +655,10 @@
 
                 if (json.success) {
                     renderWeather(json.data);
-                    
+
                     loading.classList.add('hidden');
                     setTimeout(() => {
-                         loading.style.display = 'none';
+                        loading.style.display = 'none';
                     }, 500);
                     mainContent.style.display = 'block';
                 } else {
