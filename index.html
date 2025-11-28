@@ -162,7 +162,7 @@
             padding: 20px;
             max-width: 600px;
             /* 標題與內文間距調整 */
-            margin: 10px auto 0; 
+            margin: 10px auto 0;
         }
 
         /* === 核心：今日焦點卡片 (潛水艙風格) === */
@@ -308,10 +308,14 @@
 
         .scroll-container {
             display: flex;
+            /* 🌟 讓卡片在空間足夠時置中 */
+            justify-content: center;
             overflow-x: auto;
             gap: 15px;
             padding-bottom: 10px;
-            scrollbar-width: none;
+            /* 移除內建捲軸 */
+            scrollbar-width: none; 
+            -ms-overflow-style: none; /* For IE and Edge */
         }
 
         .scroll-container::-webkit-scrollbar {
@@ -343,13 +347,31 @@
 
         .mini-icon {
             font-size: 2.2rem;
-            margin: 8px 0;
+            margin: 5px 0 0;
+        }
+        
+        /* 🌟 新增天氣描述的樣式 */
+        .mini-weather-desc {
+            font-size: 0.9rem;
+            color: var(--atlantis-gold);
+            margin: 5px 0 8px;
+            font-weight: 700;
         }
 
         .mini-temp {
             font-size: 1.2rem;
             font-weight: 800;
             color: white;
+            line-height: 1;
+        }
+
+        /* 🌟 新增海流濕度（降雨機率）的樣式 */
+        .mini-rain {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 8px;
+            padding: 4px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         /* Loading 聲納畫面 */
@@ -597,7 +619,7 @@
                                 <div class="advice-item">
                                     <div class="advice-icon">${advice.rainIcon}</div>
                                     <div class="advice-text">${advice.rainText}</div>
-                                    <div class="advice-sub">濕度 ${current.rain}</div>
+                                    <div class="advice-sub">降雨機率 ${current.rain}</div>
                                 </div>
                                 <div class="advice-item">
                                     <div class="advice-icon">${advice.clothIcon}</div>
@@ -616,15 +638,26 @@
                 let p = getTimePeriod(f.startTime);
                 const fDate = new Date(f.startTime);
                 if (fDate.getDate() !== todayDate) {
-                    p = "明日" + p;
+                    // 檢查是否為明日，並替換顯示的字串
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    if (fDate.getDate() === tomorrow.getDate()) {
+                         p = "明日" + p;
+                    } else {
+                        // 如果是後天或更久以後，顯示日期
+                        p = `${fDate.getMonth() + 1}/${fDate.getDate()} ${p}`;
+                    }
+                   
                 }
 
+                // 🌟 新增天氣描述與更清晰的濕度標示
                 scrollContainer.innerHTML += `
                             <div class="mini-card">
                                 <div class="mini-time">${p}</div>
                                 <div class="mini-icon">${getWeatherIcon(f.weather)}</div>
+                                <div class="mini-weather-desc">${f.weather}</div>
                                 <div class="mini-temp">${f.minTemp}° - ${f.maxTemp}°</div>
-                                <div style="font-size:0.8rem; color:#aaa; margin-top:5px;">💧${f.rain}</div>
+                                <div class="mini-rain">💧 降雨機率 ${f.rain}</div>
                             </div>
                         `;
             });
@@ -645,6 +678,7 @@
             mainContent.style.display = 'none';
 
             try {
+                // 為了讓動畫跑完，加入至少 1 秒的延遲
                 const delayPromise = new Promise(resolve => setTimeout(resolve, 1000));
                 const fetchPromise = fetch(API_BASE_URL + cityKey).then(res => {
                     if (!res.ok) throw new Error("API fail");
