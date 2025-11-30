@@ -617,7 +617,7 @@
                             <div class="hero-period">CURRENT | ${period}</div>
                             <div class="hero-temp-container">
                                 <div class="hero-icon">${getWeatherIcon(current.weather)}</div>
-                                <div class="hero-temp">${avgTemp}°C</div>
+                                <div class="hero-temp">${avgTemp} °C</div>
                             </div>
                             <div class="hero-desc">${current.weather}</div>
                             
@@ -625,7 +625,7 @@
                                 <div class="advice-item">
                                     <div class="advice-icon">${advice.rainIcon}</div>
                                     <div class="advice-text">${advice.rainText}</div>
-                                    <div class="advice-sub">降雨機率 ${current.rain}%</div> 
+                                    <div class="advice-sub">降雨機率 ${current.rain}</div> 
                                 </div>
                                 <div class="advice-item">
                                     <div class="advice-icon">${advice.clothIcon}</div>
@@ -667,9 +667,10 @@
 
             // 右上角時間
             const now = new Date();
+            const year = now.getFullYear();
             const month = now.getMonth() + 1;
             const date = now.getDate();
-            document.getElementById('updateTime').textContent = `DATE ${month}.${date}`;
+            document.getElementById('updateTime').textContent = `${year}/${month}/${date}`;
         }
 
         async function fetchWeather(cityKey = 'taipei') {
