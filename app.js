@@ -1,7 +1,8 @@
 // 注意：這裡請維持您的 Server 網址
-// const API_BASE_URL = "https://rm93-weather.zeabur.app/api/weather/";
-const API_BASE_URL = "http://localhost:3000/api/weather/";
-const API_WEEKLY_URL = "http://localhost:3000/api/weekly/";
+const API_BASE_URL = "https://rm93-weather.zeabur.app/api/weather/";
+const API_WEEKLY_URL = "https://rm93-weather.zeabur.app/api/weekly/";
+// const API_BASE_URL = "http://localhost:3000/api/weather/";
+// const API_WEEKLY_URL = "http://localhost:3000/api/weekly/";
 
 // 🌟 修正地點名稱，回歸標準城市名稱
 const cities = {
