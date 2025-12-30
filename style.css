@@ -468,6 +468,23 @@ body {
     padding: 15px;
 }
 
+/* 一週折線圖容器 */
+.chart-wrapper {
+    width: 100%;
+    height: 220px;
+    padding: 10px 15px;
+    margin-bottom: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(4px);
+}
+
+.chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 .weekly-card {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 15px;

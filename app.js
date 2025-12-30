@@ -179,6 +179,76 @@ function renderWeeklyWeather(data) {
         `;
         container.appendChild(dayCard);
     });
+
+    // 同步繪製折線圖（最高溫）
+    try {
+        renderWeeklyChart(data);
+    } catch (e) {
+        console.warn('折線圖渲染失敗:', e);
+    }
+}
+
+// Chart.js 折線圖實例
+let weeklyChartInstance = null;
+
+function renderWeeklyChart(data) {
+    const canvas = document.getElementById('weeklyChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const labels = data.forecasts.map(f => f.date || f.dayOfWeek);
+    const maxTemps = data.forecasts.map(f => parseInt(f.maxTemp || 0));
+    const minTemps = data.forecasts.map(f => parseInt(f.minTemp || 0));
+
+    if (weeklyChartInstance) {
+        weeklyChartInstance.destroy();
+        weeklyChartInstance = null;
+    }
+
+    weeklyChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '最高溫 (°C)',
+                    data: maxTemps,
+                    borderColor: '#00f2ff',
+                    backgroundColor: 'rgba(0,242,255,0.12)',
+                    tension: 0.25,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#00f2ff'
+                },
+                {
+                    label: '最低溫 (°C)',
+                    data: minTemps,
+                    borderColor: '#ffd700',
+                    backgroundColor: 'rgba(255,215,0,0.08)',
+                    tension: 0.25,
+                    fill: true,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#ffd700'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: { color: '#e0f7fa' }
+                },
+                x: {
+                    ticks: { color: '#e0f7fa' }
+                }
+            }
+        }
+    });
 }
 
 // 取得一週天氣
