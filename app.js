@@ -180,9 +180,10 @@ function renderWeeklyWeather(data) {
         container.appendChild(dayCard);
     });
 
-    // 同步繪製折線圖（最高溫）
+    // 同步繪製兩個折線圖（最高溫 + 降雨機率）
     try {
         renderWeeklyChart(data);
+        renderWeeklyRainChart(data);
     } catch (e) {
         console.warn('折線圖渲染失敗:', e);
     }
@@ -190,13 +191,23 @@ function renderWeeklyWeather(data) {
 
 // Chart.js 折線圖實例
 let weeklyChartInstance = null;
+let weeklyRainChartInstance = null;
 
 function renderWeeklyChart(data) {
     const canvas = document.getElementById('weeklyChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const labels = data.forecasts.map(f => f.date || f.dayOfWeek);
+    // 🌟 修正日期格式：yyyy-mm-dd → mm/dd(星期)
+    const labels = data.forecasts.map(f => {
+        const dateObj = new Date(f.date + "T00:00:00");
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const days = ["日", "一", "二", "三", "四", "五", "六"];
+        const dayOfWeek = days[dateObj.getDay()];
+        return `${month}/${day}(${dayOfWeek})`;
+    });
+    
     const maxTemps = data.forecasts.map(f => parseInt(f.maxTemp || 0));
     const minTemps = data.forecasts.map(f => parseInt(f.minTemp || 0));
 
@@ -241,6 +252,69 @@ function renderWeeklyChart(data) {
             scales: {
                 y: {
                     beginAtZero: false,
+                    ticks: { color: '#e0f7fa' }
+                },
+                x: {
+                    ticks: { color: '#e0f7fa' }
+                }
+            }
+        }
+    });
+}
+
+// 🌟 新增：一週降雨機率折線圖
+function renderWeeklyRainChart(data) {
+    const canvas = document.getElementById('weeklyRainChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // 日期格式：mm/dd(星期)
+    const labels = data.forecasts.map(f => {
+        const dateObj = new Date(f.date + "T00:00:00");
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const days = ["日", "一", "二", "三", "四", "五", "六"];
+        const dayOfWeek = days[dateObj.getDay()];
+        return `${month}/${day}(${dayOfWeek})`;
+    });
+
+    const rainProbs = data.forecasts.map(f => {
+        const prob = f.rainProb ? parseInt(f.rainProb) : 0;
+        return prob;
+    });
+
+    if (weeklyRainChartInstance) {
+        weeklyRainChartInstance.destroy();
+        weeklyRainChartInstance = null;
+    }
+
+    weeklyRainChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '降雨機率 (%)',
+                    data: rainProbs,
+                    borderColor: '#00bfff',
+                    backgroundColor: 'rgba(0,191,255,0.15)',
+                    tension: 0.25,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#00bfff'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
                     ticks: { color: '#e0f7fa' }
                 },
                 x: {
