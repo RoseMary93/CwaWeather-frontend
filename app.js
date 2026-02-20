@@ -498,6 +498,134 @@ function renderWeather(data, cityKey = 'taipei') {
     document.getElementById('updateTime').textContent = `${year}/${month}/${date}`;
 }
 
+// 🌟 新增：經緯度與縣市的對應關係（邊界判定）
+const cityBoundaries = {
+    taipei: { lat: [25.0170, 25.1957], lng: [121.4324, 121.6522] },
+    newtaipei: { lat: [24.9720, 25.2948], lng: [121.2324, 121.9717] },
+    keelung: { lat: [25.0908, 25.2047], lng: [121.1309, 121.4680] },
+    taoyuan: { lat: [24.7256, 25.2059], lng: [120.9184, 121.5427] },
+    hsinchu_city: { lat: [24.7829, 24.9396], lng: [120.8577, 120.9910] },
+    hsinchu_county: { lat: [24.5205, 24.9676], lng: [120.6471, 121.0680] },
+    miaoli: { lat: [24.3299, 24.7628], lng: [120.5235, 121.0585] },
+    taichung: { lat: [24.0130, 24.5568], lng: [120.3681, 120.9869] },
+    changhua: { lat: [23.8076, 24.2230], lng: [120.2605, 120.7730] },
+    nantou: { lat: [23.4173, 24.1667], lng: [120.3988, 121.2589] },
+    yunlin: { lat: [23.5440, 23.8169], lng: [120.1609, 120.6559] },
+    chiayi_city: { lat: [23.2692, 23.3082], lng: [120.3688, 120.4437] },
+    chiayi_county: { lat: [23.0302, 23.5866], lng: [120.1282, 120.7985] },
+    tainan: { lat: [22.8530, 23.2184], lng: [120.0537, 120.6532] },
+    kaohsiung: { lat: [22.2845, 23.0766], lng: [120.0394, 120.9535] },
+    pingtung: { lat: [21.9849, 22.8031], lng: [120.4867, 120.9983] },
+    yilan: { lat: [24.4598, 24.9520], lng: [121.8242, 122.0738] },
+    hualien: { lat: [23.6978, 24.3385], lng: [121.0054, 121.6735] },
+    taitung: { lat: [22.3896, 23.0933], lng: [120.8773, 121.5574] },
+    penghu: { lat: [23.5691, 23.7769], lng: [119.2870, 119.6309] },
+    kinmen: { lat: [24.3945, 24.4828], lng: [118.2342, 118.4522] },
+    lienchiang: { lat: [26.0898, 26.2773], lng: [119.8868, 120.0452] }
+};
+
+// 🌟 根據經緯度判定縣市
+function getCityByCoordinates(lat, lng) {
+    for (const [cityKey, bounds] of Object.entries(cityBoundaries)) {
+        const [minLat, maxLat] = bounds.lat;
+        const [minLng, maxLng] = bounds.lng;
+        
+        if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
+            return cityKey;
+        }
+    }
+    // 預設返回台北
+    return 'taipei';
+}
+
+// 🌟 取得使用者位置
+function getUserLocation() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            console.warn('[WARN] 瀏覽器不支援地理位置功能');
+            reject(new Error('瀏覽器不支援地理位置功能'));
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                console.log(`[DEBUG] 取得用戶位置: ${latitude}, ${longitude}`);
+                resolve({ latitude, longitude });
+            },
+            (error) => {
+                console.warn('[WARN] 使用者拒絕或無法取得位置:', error.message);
+                reject(error);
+            },
+            {
+                enableHighAccuracy: false,
+                timeout: 10000,
+                maximumAge: 300000 // 5 分鐘內的快取位置
+            }
+        );
+    });
+}
+
+// 🌟 使用 Nominatim API 反向地理編碼（精準備選方案）
+async function getCityByReverseGeocoding(lat, lng) {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`,
+            {
+                headers: {
+                    'Accept-Language': 'zh-TW'
+                }
+            }
+        );
+        const data = await response.json();
+        console.log('[DEBUG] Nominatim 回應:', data);
+        
+        // 從回應中提取縣市名稱
+        const address = data.address || {};
+        const countyName = address.county || address.state || '';
+        
+        // 反向對應回縣市 key
+        for (const [key, name] of Object.entries(cities)) {
+            if (countyName.includes(name)) {
+                console.log(`[DEBUG] Nominatim 偵測縣市: ${name}`);
+                return key;
+            }
+        }
+        
+        console.warn('[WARN] Nominatim 無法對應縣市，使用預設');
+        return 'taipei'; // 預設
+    } catch (error) {
+        console.error('[ERROR] 反向地理編碼失敗:', error);
+        return 'taipei';
+    }
+}
+
+// 🌟 優先用 GPS 邊界判定，失敗時再用 Nominatim API
+async function detectCityByLocation() {
+    try {
+        // 第一步：取得用戶位置
+        const location = await getUserLocation();
+        const { latitude, longitude } = location;
+        
+        // 第二步：優先使用 GPS 邊界判定（快速）
+        const detectedCity = getCityByCoordinates(latitude, longitude);
+        if (detectedCity !== 'taipei' || Math.random() > 0.5) {
+            // 邊界判定成功且不是預設值，或隨機決定信任邊界判定
+            console.log(`[INFO] 使用 GPS 邊界判定: ${detectedCity}`);
+            return detectedCity;
+        }
+        
+        // 第三步：若邊界判定結果是台北，再用 Nominatim API 驗證（精準）
+        console.log('[INFO] 邊界判定結果為台北，使用 Nominatim API 驗證...');
+        const verifiedCity = await getCityByReverseGeocoding(latitude, longitude);
+        return verifiedCity;
+        
+    } catch (error) {
+        console.error('[ERROR] 位置偵測失敗:', error.message);
+        return 'taipei'; // 失敗時預設台北
+    }
+}
+
 async function fetchWeather(cityKey = 'taipei') {
     const loading = document.getElementById('loading');
     const mainContent = document.getElementById('mainContent');
@@ -535,8 +663,19 @@ async function fetchWeather(cityKey = 'taipei') {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     createBubbles(); // 啟動氣泡
     initCitySelect();
-    fetchWeather();
+    
+    // 🌟 新增：嘗試自動偵測用戶位置
+    try {
+        const detectedCity = await detectCityByLocation();
+        const citySelect = document.getElementById('citySelect');
+        citySelect.value = detectedCity;
+        console.log(`[INFO] 自動加載 ${cities[detectedCity]}`);
+        fetchWeather(detectedCity);
+    } catch (error) {
+        console.log('[INFO] 位置自動偵測失敗，使用預設位置: 台北市');
+        fetchWeather('taipei');
+    }
 });
