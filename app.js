@@ -30,6 +30,32 @@ const cities = {
     lienchiang: "連江縣"
 };
 
+// 🌟 城市經緯度對照表（用以計算日落時間）
+const cityCoordinates = {
+    taipei: { lat: 25.0330, lng: 121.5654 },
+    newtaipei: { lat: 25.0085, lng: 121.4644 },
+    keelung: { lat: 25.1276, lng: 121.7397 },
+    taoyuan: { lat: 25.0157, lng: 121.3066 },
+    hsinchu_city: { lat: 24.8138, lng: 120.9675 },
+    hsinchu_county: { lat: 24.8135, lng: 121.0105 },
+    miaoli: { lat: 24.5205, lng: 120.8235 },
+    taichung: { lat: 24.1372, lng: 120.6738 },
+    changhua: { lat: 24.0804, lng: 120.5055 },
+    nantou: { lat: 23.8103, lng: 120.9930 },
+    yunlin: { lat: 23.7075, lng: 120.4417 },
+    chiayi_city: { lat: 23.2692, lng: 120.4437 },
+    chiayi_county: { lat: 23.4608, lng: 120.6271 },
+    tainan: { lat: 22.9997, lng: 120.2270 },
+    kaohsiung: { lat: 22.6163, lng: 120.3006 },
+    pingtung: { lat: 22.6800, lng: 120.4891 },
+    yilan: { lat: 24.7603, lng: 121.7669 },
+    hualien: { lat: 24.1234, lng: 121.6089 },
+    taitung: { lat: 22.7696, lng: 120.9721 },
+    penghu: { lat: 23.5691, lng: 119.6309 },
+    kinmen: { lat: 24.4265, lng: 118.3927 },
+    lienchiang: { lat: 26.1609, lng: 119.9592 }
+};
+
 // 檢視模式（今日或一週）
 let viewMode = "today";
 
@@ -82,6 +108,29 @@ function getWeatherIcon(weather) {
 }
 
 // 🌟 修正建議文字，從「海洋/潛水衣」改為「大氣/衣著」
+// 🌟 新增：計算日落時間
+function getSunsetTime(cityKey) {
+    try {
+        const coords = cityCoordinates[cityKey];
+        if (!coords) {
+            console.warn(`無法找到 ${cityKey} 的經緯度`);
+            return "無法計算";
+        }
+
+        const today = new Date();
+        const times = SunCalc.getTimes(today, coords.lat, coords.lng);
+        const sunset = times.sunset;
+        
+        // 格式化時間：HH:MM
+        const hours = String(sunset.getHours()).padStart(2, '0');
+        const minutes = String(sunset.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+    } catch (e) {
+        console.error("[ERROR] 日落時間計算失敗:", e);
+        return "無法計算";
+    }
+}
+
 function getAdvice(rainProb, maxTemp) {
     // 修正降雨建議
     let rainIcon = "💧";
@@ -372,7 +421,7 @@ async function fetchWeeklyWeather(cityKey = 'taipei') {
     }
 }
 
-function renderWeather(data) {
+function renderWeather(data, cityKey = 'taipei') {
     const forecasts = data.forecasts;
     const current = forecasts[0];
     const others = forecasts.slice(1);
@@ -380,8 +429,9 @@ function renderWeather(data) {
     const advice = getAdvice(current.rain, current.maxTemp);
     const period = getTimePeriod(current.startTime);
     const avgTemp = Math.round((parseInt(current.maxTemp) + parseInt(current.minTemp)) / 2);
+    const sunsetTime = getSunsetTime(cityKey);
 
-    // 🌟 修正今日焦點卡的描述
+    // 🌟 修正今日焦點卡的描述 + 日落時間
     document.getElementById('heroCard').innerHTML = `
                 <div class="hero-card">
                     <div class="hero-period">CURRENT | ${period}</div>
@@ -401,6 +451,11 @@ function renderWeather(data) {
                             <div class="advice-icon">${advice.clothIcon}</div>
                             <div class="advice-text">${advice.clothText}</div>
                             <div class="advice-sub">最高氣溫 ${current.maxTemp}</div>
+                        </div>
+                        <div class="advice-item">
+                            <div class="advice-icon">🌅</div>
+                            <div class="advice-text">日落時間</div>
+                            <div class="advice-sub">${sunsetTime}</div>
                         </div>
                     </div>
                 </div>
@@ -462,7 +517,7 @@ async function fetchWeather(cityKey = 'taipei') {
         const [_, json] = await Promise.all([delayPromise, fetchPromise]);
 
         if (json.success) {
-            renderWeather(json.data);
+            renderWeather(json.data, cityKey);
 
             loading.classList.add('hidden');
             setTimeout(() => {

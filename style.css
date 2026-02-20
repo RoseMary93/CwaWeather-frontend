@@ -234,7 +234,7 @@ body {
 /* === 裝備建議區 === */
 .advice-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 15px;
     margin-top: 20px;
     padding-top: 20px;
