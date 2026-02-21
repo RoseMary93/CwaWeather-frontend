@@ -1,4 +1,4 @@
-// 注意：這裡請維持您的 Server 網址
+// 注意：這裡請維持您的 Server 網址，後面也有一個地方要改(95)
 const API_BASE_URL = "https://rm93-weather.zeabur.app/api/weather/";
 const API_WEEKLY_URL = "https://rm93-weather.zeabur.app/api/weekly/";
 // const API_BASE_URL = "http://localhost:3000/api/weather/";
@@ -92,7 +92,8 @@ async function populateTowns(cityKey, selectedTown = "") {
     townSelect.innerHTML = '<option value="">(未指定區域)</option>';
 
     try {
-        const res = await fetch(`http://localhost:3000/api/towns/${cityKey}`);
+        // const res = await fetch(`http://localhost:3000/api/towns/${cityKey}`);
+        const res = await fetch(`https://rm93-weather.zeabur.app/api/towns/${cityKey}`);
         const json = await res.json();
 
         if (json.success && json.towns) {
