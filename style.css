@@ -98,6 +98,9 @@ body {
 /* 下拉選單：亞特蘭提斯石板風格 */
 .location-select-wrapper {
     position: relative;
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .location-select {
@@ -105,7 +108,8 @@ body {
     -webkit-appearance: none;
     background: rgba(0, 0, 0, 0.5);
     color: var(--neon-cyan);
-    padding: 8px 35px 8px 15px;
+    padding: 8px 15px;
+    /* 🌟 修正：改為對稱內距以利置中 */
     border-radius: 12px;
     font-weight: 900;
     font-size: 1.1rem;
@@ -115,23 +119,17 @@ body {
     cursor: pointer;
     outline: none;
     transition: all 0.3s;
+    text-align: center;
+    /* 🌟 置中文字 */
+    text-align-last: center;
+    /* 🌟 確保選中項也置中 */
 }
 
 .location-select:focus {
     box-shadow: 0 0 15px rgba(0, 242, 255, 0.5);
 }
 
-.location-select-wrapper::after {
-    content: '⚓';
-    font-size: 0.9rem;
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--atlantis-gold);
-    pointer-events: none;
-}
-
+/* 移除絕對定位的錨點圖標，改用一般的下拉樣式或更簡潔的設計，以防擋住鄉鎮選單 */
 .update-pill {
     font-size: 0.8rem;
     color: var(--atlantis-gold);
@@ -204,6 +202,7 @@ body {
 }
 
 @keyframes float {
+
     0%,
     100% {
         transform: translateY(0);
@@ -474,9 +473,9 @@ body {
     height: 220px;
     padding: 10px 15px;
     margin-bottom: 12px;
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.06);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(4px);
 }
 

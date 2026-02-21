@@ -1,8 +1,8 @@
 // 注意：這裡請維持您的 Server 網址
-const API_BASE_URL = "https://rm93-weather.zeabur.app/api/weather/";
-const API_WEEKLY_URL = "https://rm93-weather.zeabur.app/api/weekly/";
-// const API_BASE_URL = "http://localhost:3000/api/weather/";
-// const API_WEEKLY_URL = "http://localhost:3000/api/weekly/";
+// const API_BASE_URL = "https://rm93-weather.zeabur.app/api/weather/";
+// const API_WEEKLY_URL = "https://rm93-weather.zeabur.app/api/weekly/";
+const API_BASE_URL = "http://localhost:3000/api/weather/";
+const API_WEEKLY_URL = "http://localhost:3000/api/weekly/";
 
 // 🌟 修正地點名稱，回歸標準城市名稱
 const cities = {
@@ -58,6 +58,8 @@ const cityCoordinates = {
 
 // 檢視模式（今日或一週）
 let viewMode = "today";
+// 🌟 記錄目前偵測到的鄉鎮
+let currentTown = "";
 
 // 產生背景氣泡
 function createBubbles() {
@@ -80,19 +82,88 @@ function createBubbles() {
     }
 }
 
+/**
+ * 取得指定縣市的鄉鎮列表並填充下拉選單
+ */
+async function populateTowns(cityKey, selectedTown = "") {
+    const townSelect = document.getElementById('townSelect');
+    if (!townSelect) return;
+
+    townSelect.innerHTML = '<option value="">(未指定區域)</option>';
+
+    try {
+        const res = await fetch(`http://localhost:3000/api/towns/${cityKey}`);
+        const json = await res.json();
+
+        if (json.success && json.towns) {
+            json.towns.forEach(town => {
+                const opt = document.createElement('option');
+                opt.value = town;
+                opt.text = town;
+                townSelect.appendChild(opt);
+            });
+
+            // 🌟 核心匹配邏輯：將 GPS 偵測地名與 CWA 合法列表比對
+            if (selectedTown) {
+                const norm = (s) => s.replace(/[臺]/g, '台').replace(/[區鄉鎮市]$/, '');
+                const cleanSelected = norm(selectedTown);
+
+                const matchedTown = json.towns.find(t => {
+                    const normT = norm(t);
+                    return normT.includes(cleanSelected) || cleanSelected.includes(normT);
+                });
+
+                if (matchedTown) {
+                    townSelect.value = matchedTown;
+                    currentTown = matchedTown;
+                    console.log(`[INFO] 成功將 GPS (${selectedTown}) 對應至氣象區: ${matchedTown}`);
+                } else {
+                    console.log(`[WARN] 無法在氣象局列表中找到對應區域: ${selectedTown}，回退至全境預報`);
+                    townSelect.value = "";
+                    currentTown = "";
+                }
+            } else {
+                townSelect.value = "";
+                currentTown = "";
+            }
+        }
+    } catch (e) {
+        console.error("[ERROR] 無法取得鄉鎮列表:", e);
+    }
+}
+
 function initCitySelect() {
-    const select = document.getElementById('citySelect');
+    const citySelect = document.getElementById('citySelect');
+    const townSelect = document.getElementById('townSelect');
+
     for (const [key, name] of Object.entries(cities)) {
         const option = document.createElement('option');
         option.value = key;
         option.text = name;
-        select.appendChild(option);
+        citySelect.appendChild(option);
     }
-    select.addEventListener('change', (e) => {
+
+    // 縣市切換
+    citySelect.addEventListener('change', async (e) => {
+        const cityKey = e.target.value;
+        currentTown = "";
+        await populateTowns(cityKey);
+
         if (viewMode === 'today') {
-            fetchWeather(e.target.value);
+            fetchWeather(cityKey, "", "switch");
         } else {
-            fetchWeeklyWeather(e.target.value);
+            fetchWeeklyWeather(cityKey, "", "switch");
+        }
+    });
+
+    // 鄉鎮切換
+    townSelect.addEventListener('change', (e) => {
+        currentTown = e.target.value;
+        const cityKey = citySelect.value;
+        if (viewMode === 'today') {
+            fetchWeather(cityKey, currentTown, "switch");
+        } else {
+            fetchWeeklyWeather(cityKey, currentTown, "switch");
         }
     });
 }
@@ -120,7 +191,7 @@ function getSunsetTime(cityKey) {
         const today = new Date();
         const times = SunCalc.getTimes(today, coords.lat, coords.lng);
         const sunset = times.sunset;
-        
+
         // 格式化時間：HH:MM
         const hours = String(sunset.getHours()).padStart(2, '0');
         const minutes = String(sunset.getMinutes()).padStart(2, '0');
@@ -143,6 +214,9 @@ function getAdvice(rainProb, maxTemp) {
     } else if (prob > 30) {
         rainIcon = "☂️";
         rainText = "可能需要雨具";
+    } else {
+        rainIcon = "☀️";
+        rainText = "地面乾燥";
     }
 
     // 修正穿衣建議 (依氣溫)
@@ -169,13 +243,12 @@ function getAdvice(rainProb, maxTemp) {
     };
 }
 
-// 🌟 修正時段描述，避免誤認為潮汐
+// 🌟 修正時段描述：深夜(22~04)、清晨(04~10)、午間(10~16)、晚間(16~22)
 function getTimePeriod(startTime) {
     const hour = new Date(startTime).getHours();
-    if (hour >= 5 && hour < 11) return "早晨時段";
-    if (hour >= 11 && hour < 14) return "中午時段";
-    if (hour >= 14 && hour < 18) return "下午時段";
-    if (hour >= 18 && hour < 23) return "晚間時段";
+    if (hour >= 4 && hour < 10) return "清晨時段";
+    if (hour >= 10 && hour < 16) return "午間時段";
+    if (hour >= 16 && hour < 22) return "晚間時段";
     return "深夜時段";
 }
 
@@ -192,13 +265,13 @@ function switchViewMode(mode) {
         weeklyBtn.classList.remove('active');
         document.getElementById('todayView').style.display = 'block';
         document.getElementById('weeklyView').style.display = 'none';
-        fetchWeather(selectedCity);
+        fetchWeather(selectedCity, currentTown);
     } else {
         todayBtn.classList.remove('active');
         weeklyBtn.classList.add('active');
         document.getElementById('todayView').style.display = 'none';
         document.getElementById('weeklyView').style.display = 'block';
-        fetchWeeklyWeather(selectedCity);
+        fetchWeeklyWeather(selectedCity, currentTown);
     }
 }
 
@@ -210,6 +283,28 @@ function renderWeeklyWeather(data) {
     if (!data || !data.forecasts || data.forecasts.length === 0) {
         container.innerHTML = '<div style="text-align: center; color: #aaa; padding: 20px;">無可用天氣資料</div>';
         return;
+    }
+
+    // 更新地點顯示
+    const siteTitle = document.querySelector('.site-title');
+    const townSelect = document.getElementById('townSelect');
+
+    if (siteTitle) {
+        const cleanCity = data.city.replace('臺', '台');
+        const cleanTown = data.town ? data.town.replace('臺', '台') : '';
+        const display = (cleanTown && cleanTown !== cleanCity && !cleanCity.includes(cleanTown) && !cleanTown.includes(cleanCity))
+            ? `${data.city} ${data.town}`
+            : data.city;
+        siteTitle.textContent = display;
+    }
+
+    // 🌟 修正 3：若無法依據鄉鎮區判斷（data.town 為空），則隱藏選單 (僅在一週預報模式下)
+    if (townSelect) {
+        if (viewMode === 'weekly') {
+            townSelect.style.display = data.town ? 'block' : 'none';
+        } else {
+            townSelect.style.display = 'block';
+        }
     }
 
     data.forecasts.forEach((day) => {
@@ -256,7 +351,7 @@ function renderWeeklyChart(data) {
         const dayOfWeek = days[dateObj.getDay()];
         return `${month}/${day}(${dayOfWeek})`;
     });
-    
+
     const maxTemps = data.forecasts.map(f => parseInt(f.maxTemp || 0));
     const minTemps = data.forecasts.map(f => parseInt(f.minTemp || 0));
 
@@ -375,7 +470,7 @@ function renderWeeklyRainChart(data) {
 }
 
 // 取得一週天氣
-async function fetchWeeklyWeather(cityKey = 'taipei') {
+async function fetchWeeklyWeather(cityKey = 'taipei', townName = '', source = '') {
     const loading = document.getElementById('loading');
     const mainContent = document.getElementById('mainContent');
 
@@ -385,7 +480,15 @@ async function fetchWeeklyWeather(cityKey = 'taipei') {
 
     try {
         const delayPromise = new Promise(resolve => setTimeout(resolve, 1000));
-        const fetchPromise = fetch(API_WEEKLY_URL + cityKey).then(res => {
+        let url = API_WEEKLY_URL + cityKey;
+        const params = new URLSearchParams();
+        if (townName) params.append('town', townName);
+        if (source) params.append('source', source);
+
+        const queryString = params.toString();
+        if (queryString) url += `?${queryString}`;
+
+        const fetchPromise = fetch(url).then(res => {
             if (!res.ok) {
                 throw new Error(`API fail: ${res.status}`);
             }
@@ -422,14 +525,106 @@ async function fetchWeeklyWeather(cityKey = 'taipei') {
 }
 
 function renderWeather(data, cityKey = 'taipei') {
+    const nowTime = new Date();
     const forecasts = data.forecasts;
-    const current = forecasts[0];
-    const others = forecasts.slice(1);
+
+    // 1. 找出當下小時 (Hero Card) - 若超過整點(如17:11)則看向下一小時(18:00)
+    const currentHourStart = new Date(nowTime.getFullYear(), nowTime.getMonth(), nowTime.getDate(), nowTime.getHours() + (nowTime.getMinutes() > 0 ? 1 : 0)).getTime();
+
+    let currentIndex = forecasts.findIndex(f => new Date(f.startTime).getTime() === currentHourStart);
+
+    // 如果找不到指定的下一個小時，則回退尋找涵蓋目前的，或取第一個
+    if (currentIndex === -1) {
+        currentIndex = forecasts.findIndex(f => new Date(f.startTime) <= nowTime && new Date(f.endTime) > nowTime);
+    }
+    if (currentIndex === -1) currentIndex = 0;
+    const current = forecasts[currentIndex];
+
+    // 2. 聚合 6 小時時段預報 (Sonar Area)
+    const getBucketInfo = (d) => {
+        const h = d.getHours();
+        // 🌟 核心：跨午夜聚合邏輯。將 00:00~04:00 視為「前一天」的深夜時段
+        const logicDate = new Date(d);
+        if (h < 4) {
+            logicDate.setDate(logicDate.getDate() - 1);
+        }
+        const dayKey = logicDate.toDateString();
+
+        if (h >= 4 && h < 10) return { id: 1, name: "清晨時段", dayKey };
+        if (h >= 10 && h < 16) return { id: 2, name: "午間時段", dayKey };
+        if (h >= 16 && h < 22) return { id: 3, name: "晚間時段", dayKey };
+        return { id: 0, name: "深夜時段", dayKey };
+    };
+
+    const currentPeriodInfo = getBucketInfo(new Date(current.startTime));
+    const bucketMap = {};
+
+    forecasts.forEach((f) => {
+        const fDate = new Date(f.startTime);
+        const p = getBucketInfo(fDate);
+        const key = `${p.dayKey}_${p.id}`;
+
+        // 🌟 跳過「目前時段」所屬的整個 6 小時大區塊 (依據邏輯日期與ID)
+        if (p.dayKey === currentPeriodInfo.dayKey && p.id === currentPeriodInfo.id) return;
+
+        // 確保不顯示已過去的資料
+        if (fDate.getTime() < currentHourStart) return;
+
+        if (!bucketMap[key]) {
+            bucketMap[key] = {
+                name: p.name,
+                startTime: f.startTime,
+                weather: f.weather,
+                minTemp: 99,
+                maxTemp: -99,
+                maxRain: 0
+            };
+        }
+
+        const tMin = parseInt(f.minTemp || f.maxTemp || 0);
+        const tMax = parseInt(f.maxTemp || f.minTemp || 0);
+        const rain = parseInt(f.rain || 0);
+
+        if (tMin < bucketMap[key].minTemp) bucketMap[key].minTemp = tMin;
+        if (tMax > bucketMap[key].maxTemp) bucketMap[key].maxTemp = tMax;
+        if (rain > bucketMap[key].maxRain) bucketMap[key].maxRain = rain;
+    });
+
+    // 取得接下來 2 個桶子
+    const others = Object.values(bucketMap)
+        .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+        .slice(0, 2)
+        .map(b => ({
+            startTime: b.startTime,
+            weather: b.weather,
+            minTemp: b.minTemp + "°C",
+            maxTemp: b.maxTemp + "°C",
+            rain: b.maxRain + "%"
+        }));
 
     const advice = getAdvice(current.rain, current.maxTemp);
-    const period = getTimePeriod(current.startTime);
+    const period = "目前時段";
     const avgTemp = Math.round((parseInt(current.maxTemp) + parseInt(current.minTemp)) / 2);
     const sunsetTime = getSunsetTime(cityKey);
+
+    // 更新地點顯示
+    const siteTitle = document.querySelector('.site-title');
+    const townSelect = document.getElementById('townSelect');
+
+    if (siteTitle) {
+        const cleanCity = data.city.replace('臺', '台');
+        const cleanTown = data.town ? data.town.replace('臺', '台') : '';
+        const display = (cleanTown && cleanTown !== cleanCity && !cleanCity.includes(cleanTown) && !cleanTown.includes(cleanCity))
+            ? `${data.city} ${data.town}`
+            : data.city;
+        siteTitle.textContent = display;
+    }
+
+    // 今日預報模式下，確保鄉鎮選單可見
+    if (townSelect) {
+        townSelect.style.display = 'block';
+    }
+
 
     // 🌟 修正今日焦點卡的描述 + 日落時間
     document.getElementById('heroCard').innerHTML = `
@@ -465,18 +660,21 @@ function renderWeather(data, cityKey = 'taipei') {
     scrollContainer.innerHTML = '';
     const todayDate = new Date().getDate();
 
-    others.forEach(f => {
+    // 🌟 修正：僅顯示下 2 個時段
+    const limitedOthers = others.slice(0, 2);
+
+    limitedOthers.forEach(f => {
         let p = getTimePeriod(f.startTime);
         const fDate = new Date(f.startTime);
         if (fDate.getDate() !== todayDate) {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             if (fDate.getDate() === tomorrow.getDate()) {
-                 p = "明日" + p;
+                p = "明日" + p;
             } else {
                 p = `${fDate.getMonth() + 1}/${fDate.getDate()} ${p}`;
             }
-           
+
         }
 
         scrollContainer.innerHTML += `
@@ -491,10 +689,10 @@ function renderWeather(data, cityKey = 'taipei') {
     });
 
     // 右上角時間
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const date = now.getDate();
+    const updateTimeObj = new Date();
+    const year = updateTimeObj.getFullYear();
+    const month = updateTimeObj.getMonth() + 1;
+    const date = updateTimeObj.getDate();
     document.getElementById('updateTime').textContent = `${year}/${month}/${date}`;
 }
 
@@ -529,7 +727,7 @@ function getCityByCoordinates(lat, lng) {
     for (const [cityKey, bounds] of Object.entries(cityBoundaries)) {
         const [minLat, maxLat] = bounds.lat;
         const [minLng, maxLng] = bounds.lng;
-        
+
         if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
             return cityKey;
         }
@@ -543,34 +741,26 @@ function getUserLocation() {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             console.warn('[WARN] 瀏覽器不支援地理位置功能');
-            reject(new Error('瀏覽器不支援地理位置功能'));
-            return;
+            return reject(new Error("瀏覽器不支援定位"));
         }
-
         navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                console.log(`[DEBUG] 取得用戶位置: ${latitude}, ${longitude}`);
-                resolve({ latitude, longitude });
-            },
-            (error) => {
-                console.warn('[WARN] 使用者拒絕或無法取得位置:', error.message);
-                reject(error);
-            },
+            (pos) => resolve(pos.coords),
+            (err) => reject(err),
             {
-                enableHighAccuracy: false,
+                enableHighAccuracy: true,
                 timeout: 10000,
-                maximumAge: 300000 // 5 分鐘內的快取位置
+                maximumAge: 0
             }
         );
     });
 }
 
-// 🌟 使用 Nominatim API 反向地理編碼（精準備選方案）
+// 🌟 使用 Nominatim API 反向地理編碼（精準備選方案，支援鄉鎮市區）
 async function getCityByReverseGeocoding(lat, lng) {
     try {
+        // 🌟 提升縮放層級至 18 以獲得更精確的街道/區塊資訊
         const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`,
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
             {
                 headers: {
                     'Accept-Language': 'zh-TW'
@@ -578,55 +768,68 @@ async function getCityByReverseGeocoding(lat, lng) {
             }
         );
         const data = await response.json();
-        console.log('[DEBUG] Nominatim 回應:', data);
-        
-        // 從回應中提取縣市名稱
         const address = data.address || {};
-        const countyName = address.county || address.state || '';
-        
-        // 反向對應回縣市 key
+
+        // 🌟 正規化：將所有臺統一轉為台以利判定
+        const norm = (str) => (str || '').replace(/臺/g, '台');
+
+        const rawState = norm(address.state);
+        const rawCity = norm(address.city);
+        const rawCounty = norm(address.county);
+
+        // 鄉鎮級欄位排序 (由小至大嘗試)
+        const rawTown = address.suburb || address.city_district || address.district || address.town || address.village || address.neighbourhood || address.hamlet || '';
+        const normTown = norm(rawTown);
+
+        console.log(`[DEBUG] 定位詳細資訊:`, address);
+
+        // 1. 判定縣市 (CityKey)
+        const fullAddressStr = norm(rawState + rawCity + rawCounty);
+        let detectedCityKey = 'taipei';
+
         for (const [key, name] of Object.entries(cities)) {
-            if (countyName.includes(name)) {
-                console.log(`[DEBUG] Nominatim 偵測縣市: ${name}`);
-                return key;
+            const normName = norm(name);
+            if (fullAddressStr.includes(normName) || normName.includes(fullAddressStr)) {
+                detectedCityKey = key;
+                break;
             }
         }
-        
-        console.warn('[WARN] Nominatim 無法對應縣市，使用預設');
-        return 'taipei'; // 預設
+
+        // 2. 判定鄉鎮 (TownName)
+        let cleanTown = rawTown;
+        const normCityNameForMatch = norm(cities[detectedCityKey]);
+
+        // 如果抓到的鄉鎮名包含縣市名，或者就是縣市名，則過濾掉
+        if (normTown === normCityNameForMatch || normTown.length < 2) {
+            cleanTown = "";
+        }
+
+        console.log(`[INFO] 定位解碼結果: ${cities[detectedCityKey]} / ${cleanTown || '(全境預報)'}`);
+        return { cityKey: detectedCityKey, townName: cleanTown };
     } catch (error) {
         console.error('[ERROR] 反向地理編碼失敗:', error);
-        return 'taipei';
+        return { cityKey: 'taipei', townName: '' };
     }
 }
 
 // 🌟 優先用 GPS 邊界判定，失敗時再用 Nominatim API
 async function detectCityByLocation() {
     try {
-        // 第一步：取得用戶位置
         const location = await getUserLocation();
         const { latitude, longitude } = location;
-        
-        // 第二步：優先使用 GPS 邊界判定（快速）
-        const detectedCity = getCityByCoordinates(latitude, longitude);
-        if (detectedCity !== 'taipei' || Math.random() > 0.5) {
-            // 邊界判定成功且不是預設值，或隨機決定信任邊界判定
-            console.log(`[INFO] 使用 GPS 邊界判定: ${detectedCity}`);
-            return detectedCity;
-        }
-        
-        // 第三步：若邊界判定結果是台北，再用 Nominatim API 驗證（精準）
-        console.log('[INFO] 邊界判定結果為台北，使用 Nominatim API 驗證...');
-        const verifiedCity = await getCityByReverseGeocoding(latitude, longitude);
-        return verifiedCity;
-        
+
+        console.log(`[INFO] 偵測用戶位置: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        const result = await getCityByReverseGeocoding(latitude, longitude);
+        return result;
+
     } catch (error) {
         console.error('[ERROR] 位置偵測失敗:', error.message);
-        return 'taipei'; // 失敗時預設台北
+        currentTown = "";
+        return { cityKey: 'taipei', townName: '' };
     }
 }
 
-async function fetchWeather(cityKey = 'taipei') {
+async function fetchWeather(cityKey = 'taipei', townName = '', source = '') {
     const loading = document.getElementById('loading');
     const mainContent = document.getElementById('mainContent');
 
@@ -635,9 +838,16 @@ async function fetchWeather(cityKey = 'taipei') {
     mainContent.style.display = 'none';
 
     try {
-        // 為了讓動畫跑完，加入至少 1 秒的延遲
         const delayPromise = new Promise(resolve => setTimeout(resolve, 1000));
-        const fetchPromise = fetch(API_BASE_URL + cityKey).then(res => {
+        let url = API_BASE_URL + cityKey;
+        const params = new URLSearchParams();
+        if (townName) params.append('town', townName);
+        if (source) params.append('source', source);
+
+        const queryString = params.toString();
+        if (queryString) url += `?${queryString}`;
+
+        const fetchPromise = fetch(url).then(res => {
             if (!res.ok) throw new Error("API fail");
             return res.json();
         });
@@ -666,16 +876,21 @@ async function fetchWeather(cityKey = 'taipei') {
 document.addEventListener("DOMContentLoaded", async () => {
     createBubbles(); // 啟動氣泡
     initCitySelect();
-    
-    // 🌟 新增：嘗試自動偵測用戶位置
+
+    // 🌟 嘗試自動偵測用戶位置（縣市+鄉鎮）
     try {
-        const detectedCity = await detectCityByLocation();
+        const { cityKey, townName } = await detectCityByLocation();
+
+        // 更新 UI
         const citySelect = document.getElementById('citySelect');
-        citySelect.value = detectedCity;
-        console.log(`[INFO] 自動加載 ${cities[detectedCity]}`);
-        fetchWeather(detectedCity);
+        citySelect.value = cityKey;
+        await populateTowns(cityKey, townName);
+
+        console.log(`[INFO] 自動加載 ${cities[cityKey]} ${currentTown || '(全境)'}`);
+        fetchWeather(cityKey, currentTown, "gps");
     } catch (error) {
         console.log('[INFO] 位置自動偵測失敗，使用預設位置: 台北市');
-        fetchWeather('taipei');
+        await populateTowns('taipei');
+        fetchWeather('taipei', '', "gps");
     }
 });
